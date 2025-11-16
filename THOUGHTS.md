@@ -372,6 +372,11 @@ Start with item 1 (vector reallocation) because:
 - Easy to verify (no behavior change)
 - Good warm-up to understand TranscriptionManager flow
 
+### Scope Note
+
+Focus only on NeuralNote code (NeuralNote/ and Lib/ directories).
+Third-party code (JUCE, RTNeural, ONNXRuntime, minimp3, ASIO) is out of scope unless we can easily patch on our side without modifying upstream.
+
 ### Misconceptions and Corrections
 
 **IMPORTANT**: Tracking errors in reasoning to improve future analysis
