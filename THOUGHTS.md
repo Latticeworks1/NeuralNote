@@ -113,7 +113,9 @@
 
 - Initially didn't use TodoWrite tool (system reminders noted this)
 - Should establish habit of tracking multi-step tasks
-- Git workflow: working in cloned repo, files currently untracked
+- Git workflow: working in cloned repo from upstream (DamRsn/NeuralNote)
+- User preference: Always push automatically after commits for safety
+- Push failed: No write access to upstream repo (user: Latticeworks1)
 - Need to maintain THOUGHTS.md as ongoing development log
 
 ### Misconceptions and Corrections
