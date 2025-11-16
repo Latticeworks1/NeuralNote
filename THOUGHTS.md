@@ -280,6 +280,98 @@ _runModel() {
    - Prevents blocking audio thread during transcription
    - Timer callback (30Hz) polls for completion and updates UI
 
+---
+
+## 2025-11-16: Low-Hanging Fruit Analysis
+
+### Performance Optimizations (Easy Wins)
+
+1. **Unnecessary vector reallocation in _updatePostProcessing()** (TranscriptionManager.cpp:166-167)
+   - **Issue**: `post_processed_notes` vector allocated every time parameters change
+   - **Impact**: Called frequently during parameter tweaking (user adjusting sliders)
+   - **Fix**: Make it a member variable, reuse allocation
+   - **Effort**: Low - add member, clear/resize instead of recreate
+   - **Benefit**: Eliminates allocation in hot path during UI interaction
+
+2. **Pass by value instead of reference** (TranscriptionManager.cpp:175-176)
+   - **Issue**: `quantize()` returns by value, assigned to member
+   - **Current**: `mPostProcessedNotes = mTimeQuantizeOptions.quantize(post_processed_notes)`
+   - **Fix**: Change signature to accept output reference: `quantize(in, out&)` or return move-enabled
+   - **Effort**: Medium - requires changing TimeQuantizeOptions interface + all call sites
+   - **Benefit**: Eliminates copy/move of potentially large vector
+
+3. **Pitch bend support disabled** (SynthController.cpp:18-19)
+   - **Issue**: `INCLUDE_PITCH_BENDS = false` hardcoded, feature exists but unused
+   - **Impact**: Pitch bend data is computed but never played back
+   - **Fix**: Either enable feature or remove computation in Notes.cpp
+   - **Effort**: Low to enable (change bool), Medium to remove (propagate through pipeline)
+   - **Benefit**: Either get feature working or save computation
+
+4. **Magic number: MIDI buffer size** (SynthController.cpp:13)
+   - **Issue**: `3 * 200` hardcoded
+   - **Fix**: Define constant `MIDI_BUFFER_PREALLOCATE_SIZE`
+   - **Effort**: Trivial
+   - **Benefit**: Readability, maintainability
+
+5. **Duplicate code in _runModel() and _updatePostProcessing()**
+   - **Issue**: Lines 109-127 in _runModel() nearly identical to 158-183 in _updatePostProcessing()
+   - **Fix**: Extract shared code to helper method
+   - **Effort**: Low
+   - **Benefit**: DRY principle, easier maintenance
+
+### Code Quality Improvements
+
+6. **TODO: Template parameter type** (Notes.h:179)
+   - **Issue**: `_inferredOnsets` uses template `<typename T>` but should just be `float`
+   - **Fix**: Remove template, use `float` directly
+   - **Effort**: Low - change signature, update call sites
+   - **Benefit**: Simpler code, no template instantiation overhead
+
+7. **TODO: Frame threshold inference** (Notes.cpp:75)
+   - **Issue**: Comment suggests frame_threshold should be auto-inferred if < 0
+   - **Fix**: Implement auto-inference logic
+   - **Effort**: Medium - requires understanding threshold selection heuristic
+   - **Benefit**: Better default behavior, fewer parameters to tune
+
+8. **Magic number: Timer frequency** (TranscriptionManager.cpp:34)
+   - **Issue**: `startTimerHz(30)` - why 30Hz?
+   - **Fix**: Define constant `UI_UPDATE_RATE_HZ = 30` with comment explaining choice
+   - **Effort**: Trivial
+   - **Benefit**: Documenting design decision
+
+### Memory Management
+
+9. **Potential optimization: shrink_to_fit() usage**
+   - **Issue**: BasicPitch.cpp calls shrink_to_fit() on vectors (lines 13-19)
+   - **Question**: Is this necessary? Vectors will be reused on next transcription
+   - **Analysis needed**: Profile to see if memory churn is issue
+   - **Effort**: Low - just remove calls and test
+   - **Benefit**: Might avoid deallocation/reallocation cycles
+
+### Prioritized List (Easiest → Hardest)
+
+**Quick wins (< 30 min each):**
+1. Magic number constants (items 4, 8)
+2. Pitch bend enablement decision (item 3) - enable or remove
+3. Vector reallocation fix (item 1)
+
+**Medium effort (1-2 hours):**
+4. Extract duplicate code (item 5)
+5. Template removal (item 6)
+6. Pass-by-reference optimization (item 2)
+
+**Requires more investigation:**
+7. Frame threshold auto-inference (item 7)
+8. shrink_to_fit profiling (item 9)
+
+### Recommended First Steps
+
+Start with item 1 (vector reallocation) because:
+- Direct performance impact in interactive use case
+- Minimal code change
+- Easy to verify (no behavior change)
+- Good warm-up to understand TranscriptionManager flow
+
 ### Misconceptions and Corrections
 
 **IMPORTANT**: Tracking errors in reasoning to improve future analysis
