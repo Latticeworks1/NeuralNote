@@ -135,3 +135,17 @@
    - **User feedback**: "never use emojis" (stated twice for emphasis)
    - **Correction**: Remove all emojis from communication
    - **Lesson**: Follow explicit formatting guidelines in system prompt. Professional CLI tools don't use decorative emojis.
+
+3. **Git push permission error - resolved**:
+   - **Problem**: Initial push to origin failed with 403 error (no write access to DamRsn/NeuralNote)
+   - **Diagnosis**:
+     - User is Latticeworks1, upstream is DamRsn/NeuralNote
+     - No write access to upstream repository
+     - GitHub CLI (gh) available but not authenticated
+   - **Solution steps**:
+     1. Added fork remote: `git remote add fork https://github.com/Latticeworks1/NeuralNote.git`
+     2. Attempted push to fork/master - rejected (fork has diverged with "Add files via upload" commit)
+     3. Pushed to new branch instead: `git push fork master:add-claude-documentation`
+   - **Result**: Successfully pushed to https://github.com/Latticeworks1/NeuralNote/tree/add-claude-documentation
+   - **Configuration**: Set up fork remote for future automatic pushes to feature branches
+   - **Lesson**: When working with forks, always check if histories have diverged. Push to feature branches to avoid conflicts with fork's master.
