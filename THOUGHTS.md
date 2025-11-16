@@ -126,3 +126,10 @@
    - **Correction**: Realized this was just a macOS application bundle (the compiled/installed app), not the source repository
    - **Action taken**: Asked user for source location, they provided GitHub URL, cloned to `/tmp/NeuralNote/`
    - **Lesson**: Always verify directory contains source code before assuming it's a development repository. `.app` directories on macOS are compiled bundles, not source code.
+
+2. **Used emoji despite explicit instructions**:
+   - **Wrong behavior**: Used checkmark emoji (✓) in commit confirmation message
+   - **Instruction violated**: System prompt explicitly states "Only use emojis if the user explicitly requests it. Avoid using emojis in all communication unless asked."
+   - **User feedback**: "never use emojis" (stated twice for emphasis)
+   - **Correction**: Remove all emojis from communication
+   - **Lesson**: Follow explicit formatting guidelines in system prompt. Professional CLI tools don't use decorative emojis.
