@@ -118,6 +118,168 @@
 - Push failed: No write access to upstream repo (user: Latticeworks1)
 - Need to maintain THOUGHTS.md as ongoing development log
 
+---
+
+## 2025-11-16: Deep Dive into Neural Model Integration
+
+### Model Architecture Analysis
+
+**Two-Stage Pipeline:**
+
+1. **Feature Extraction (ONNXRuntime)**: `Features.cpp/.h`
+   - Model: `features_model.ort` (runtime-optimized ONNX model)
+   - Input: Raw audio at 22,050 Hz (any length)
+   - Process: Computes Constant-Q Transform (CQT) + Harmonic Stacking
+   - Output: Shape `[1, num_frames, 264, 8]` = 264 frequency bins × 8 harmonics per frame
+   - Threading: Single-threaded (1 interop, 1 intraop thread)
+   - Model loaded from embedded binary: `BinaryData::features_model_ort`
+
+2. **CNN Inference (RTNeural)**: `BasicPitchCNN.cpp/.h`
+   - Split into 4 sequential models (workaround for RTNeural's streaming constraints):
+     - `mCNNContour`: Contour prediction (264 bins → 264 bins)
+     - `mCNNNote`: Note prediction (264 → 88 piano keys)
+     - `mCNNOnsetInput`: Onset features (8×264 → 32×88)
+     - `mCNNOnsetOutput`: Final onset prediction (33×88 → 88)
+   - Models loaded from JSON: `cnn_contour_model.json`, `cnn_note_model.json`, `cnn_onset_1_model.json`, `cnn_onset_2_model.json`
+   - Compiled separately with forced -O3 optimization (even in Debug)
+   - Uses circular buffers for frame-by-frame streaming with lookahead compensation
+
+### Critical Discovery: Lookahead Compensation
+
+**The CNN has a total lookahead of 10 frames** (`mTotalLookahead = 10`):
+- Contour CNN: 3 frames
+- Note CNN: 6 frames
+- Onset CNN: 1 frame (output)
+
+This creates alignment complexity in `BasicPitch::transcribeToMIDI()`:
+```cpp
+// Lines 76-100: Three-phase inference
+// Phase 1: Feed zeros, discard output (prime the pipeline)
+for (int i = 0; i < num_lh_frames; i++)
+    mBasicPitchCNN.frameInference(zero_input, ...)
+
+// Phase 2: Feed real frames, discard output (compensate for lookahead)
+for (frame_idx = 0; frame_idx < num_lh_frames; frame_idx++)
+    mBasicPitchCNN.frameInference(real_input[frame_idx], discard_output)
+
+// Phase 3: Feed real frames, save output with correct alignment
+for (frame_idx = num_lh_frames; frame_idx < mNumFrames; frame_idx++)
+    mBasicPitchCNN.frameInference(real_input[frame_idx],
+                                  output[frame_idx - num_lh_frames])
+
+// Phase 4: Feed zeros, get final frames
+for (frame_idx = mNumFrames; frame_idx < mNumFrames + num_lh_frames; frame_idx++)
+    mBasicPitchCNN.frameInference(zero_input, output[frame_idx - num_lh_frames])
+```
+
+This is necessary because each model in the chain has temporal dependencies, and RTNeural processes frame-by-frame. The output at time `t` depends on input frames `[t, t+1, ..., t+lookahead]`.
+
+### Model Data Flow
+
+```
+Audio (22.05kHz, any length)
+    ↓
+Features.computeFeatures() [ONNXRuntime]
+    ↓
+CQT Features [num_frames × 264 × 8]
+    ↓
+BasicPitchCNN.frameInference() [RTNeural, called per frame]
+    ↓
+├─→ mCNNContour → Contours PG [264 bins, pitch contours]
+├─→ mCNNNote → Notes PG [88 bins, note probabilities]
+└─→ mCNNOnsetInput + mCNNOnsetOutput → Onsets PG [88 bins, onset probabilities]
+    ↓
+Notes.convert() [Posteriorgram → MIDI conversion]
+    ↓
+MIDI Note Events [startTime, endTime, pitch, amplitude, pitchBends[]]
+    ↓
+Post-processing (NoteOptions, TimeQuantize)
+    ↓
+Final MIDI Output
+```
+
+### Key Insights
+
+1. **Why 4 models?** The split is dictated by:
+   - Different lookahead requirements per stage
+   - Concatenation operations between stages (see `_concat()` in BasicPitchCNN.cpp:131-141)
+   - RTNeural's frame-by-frame processing model
+   - Cannot process the full graph in one pass due to temporal dependencies
+
+2. **Circular buffer architecture**: `BasicPitchCNN` uses circular buffers to store intermediate outputs:
+   - `mContoursCircularBuffer[8]`: Stores contour outputs with wraparound indexing
+   - `mNotesCircularBuffer[5]`: Stores note outputs
+   - `mConcat2CircularBuffer[8]`: Stores concat operation results
+   - Enables proper frame alignment despite varying lookaheads
+
+3. **Memory alignment**: All buffers use `alignas(RTNEURAL_DEFAULT_ALIGNMENT)` for SIMD optimization
+
+4. **Inference optimization**:
+   - ONNXRuntime runs in single-threaded mode (preventing thread pool overhead)
+   - BasicPitchCNN compiled with -O3 regardless of build type
+   - Frame-by-frame processing enables streaming but adds complexity
+
+5. **Update without re-inference**: `BasicPitch::updateMIDI()` allows changing note detection parameters (sensitivity, min duration) without re-running the CNN. Only `Notes.convert()` is called again. This is why posteriorgrams are cached.
+
+### Integration Points
+
+**TranscriptionManager orchestrates the full pipeline**:
+
+```cpp
+_runModel() {
+    // 1. Set parameters
+    mBasicPitch.setParameters(noteSensitivity, splitSensitivity, minNoteDuration)
+
+    // 2. Run full transcription (Features + CNN + Notes)
+    mBasicPitch.transcribeToMIDI(audio, numSamples)
+
+    // 3. Post-process: Note quantization (scale snapping)
+    post_processed = mNoteOptions.process(mBasicPitch.getNoteEvents())
+
+    // 4. Post-process: Time quantization (rhythmic snapping)
+    mPostProcessedNotes = mTimeQuantizeOptions.quantize(post_processed)
+
+    // 5. Handle overlapping notes and pitch bends
+    Notes::dropOverlappingPitchBends(mPostProcessedNotes)
+    Notes::mergeOverlappingNotesWithSamePitch(mPostProcessedNotes)
+
+    // 6. Convert to synth events for playback
+    mProcessor->getPlayer()->getSynthController()->setNewMidiEventsVectorToUse(...)
+}
+```
+
+**Parameter updates trigger different code paths**:
+- Sensitivity/duration changes → `_updateTranscription()` → calls `mBasicPitch.updateMIDI()` (skips CNN)
+- Quantization changes → `_updatePostProcessing()` → skips both Features and CNN
+- This minimizes computation for parameter tweaking during playback
+
+### Constants (BasicPitchConstants.h)
+
+- `NUM_HARMONICS = 8`: CQT harmonics stacked
+- `NUM_FREQ_IN = 264`: Input frequency bins (3 bins per semitone × 88 keys)
+- `NUM_FREQ_OUT = 88`: Piano keys (MIDI 21-108, A0-C8)
+- `BASIC_PITCH_SAMPLE_RATE = 22050.0`: Model expects this exact rate
+- `FFT_HOP = 256`: Frame hop size (11.6ms per frame at 22.05kHz)
+- `AUDIO_WINDOW_LENGTH = 2`: Training window size in seconds
+
+### Performance Considerations
+
+1. **Bottlenecks identified**:
+   - BasicPitchCNN inference is the hot path (forced -O3 compilation)
+   - Features extraction is less critical (single-threaded ONNX session)
+   - Memory allocations avoided via circular buffers
+
+2. **Why not real-time?**
+   - CQT requires long audio chunks (>1s) for low frequency bins
+   - CNN adds ~120ms latency
+   - Note creation algorithm is non-causal (processes backward from future to past)
+   - Total latency incompatible with live performance
+
+3. **Thread pool usage**:
+   - TranscriptionManager uses single-thread pool for background jobs
+   - Prevents blocking audio thread during transcription
+   - Timer callback (30Hz) polls for completion and updates UI
+
 ### Misconceptions and Corrections
 
 **IMPORTANT**: Tracking errors in reasoning to improve future analysis
