@@ -9,6 +9,7 @@
 #include "BasicPitchConstants.h"
 #include "Resampler.h"
 #include "AudioUtils.h"
+#include "WhisperConstants.h"
 
 class NeuralNoteAudioProcessor;
 
@@ -93,6 +94,17 @@ public:
      */
     AudioThumbnail* getAudioThumbnail();
 
+    /**
+     * Retrieve audio resampled to 16 kHz for Whisper integration.
+     * @return Pointer to the mono 16 kHz buffer or nullptr if unavailable.
+     */
+    float* getAudioResampled16k();
+
+    /**
+     * Number of samples available in the 16 kHz Whisper buffer.
+     */
+    int getNumSamples16k() const;
+
 private:
     void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override;
 
@@ -121,6 +133,7 @@ private:
 
     AudioBuffer<float> mSourceAudio;
     AudioBuffer<float> mDownsampledSourceAudio; // Always at basic pitch sample rate
+    AudioBuffer<float> mWhisperSourceAudio16k;  // Mono buffer at 16 kHz for Whisper
 
     // Sample rate for mSourceAudio buffer
     double mSourceAudioSampleRate = 44100;
@@ -131,6 +144,7 @@ private:
 
     std::atomic<unsigned long long> mNumSamplesAcquired = 0;
     std::atomic<unsigned long long> mNumSamplesAcquiredDown = 0;
+    std::atomic<unsigned long long> mNumSamplesAcquired16k = 0;
     std::atomic<double> mDuration = 0.0;
 
     String mDroppedFilename;
@@ -139,6 +153,8 @@ private:
     AudioBuffer<float> mInternalDownsampledBuffer;
 
     std::atomic<bool> mIsRecording = false;
+
+    void _updateWhisperAudioBuffer();
 };
 
 #endif // SourceAudioManager_h

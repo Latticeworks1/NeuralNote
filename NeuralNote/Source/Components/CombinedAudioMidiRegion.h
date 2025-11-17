@@ -11,6 +11,7 @@
 #include "Keyboard.h"
 #include "PianoRoll.h"
 #include "PluginProcessor.h"
+#include "TextRegion.h"
 
 class CombinedAudioMidiRegion
     : public Component
@@ -55,6 +56,10 @@ public:
 
     PianoRoll* getPianoRoll();
 
+    void setTimedWords(const std::vector<TimedWord>& words);
+
+    void clearTimedWords();
+
     const double mBaseNumPixelsPerSecond = 100.0;
 
     const int mAudioRegionHeight = 85;
@@ -69,6 +74,8 @@ private:
     bool _isFileTypeSupported(const String& filename) const;
 
     void _setZoomLevel(double inZoomLevel);
+
+    void moved() override;
 
     void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override;
 
@@ -89,6 +96,7 @@ private:
 
     AudioRegion mAudioRegion;
     PianoRoll mPianoRoll;
+    TextRegion mTextRegion;
 };
 
 #endif // CombinedAudioMidiRegion_h

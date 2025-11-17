@@ -31,6 +31,10 @@ public:
 
     void setMidiFileDragComponentVisible();
 
+    void setTimedWords(const std::vector<TimedWord>& words);
+
+    void clearTimedWords();
+
     void mouseEnter(const MouseEvent& event) override;
 
     void mouseExit(const MouseEvent& event) override;

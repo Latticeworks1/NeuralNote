@@ -205,6 +205,8 @@ void SourceAudioManager::stopRecording()
         return;
     }
 
+    _updateWhisperAudioBuffer();
+
     auto& tree = mProcessor->getValueTree();
     tree.setPropertyExcludingListener(this, NnId::SourceAudioNativeSrPathId, mSourceFile.getFullPathName(), nullptr);
 
@@ -242,6 +244,8 @@ bool SourceAudioManager::onFileDrop(const File& inFile)
         mNumSamplesAcquired = mSourceAudio.getNumSamples();
         mDuration = static_cast<double>(mNumSamplesAcquiredDown) / BASIC_PITCH_SAMPLE_RATE;
 
+        _updateWhisperAudioBuffer();
+
         mDroppedFilename = inFile.getFileNameWithoutExtension();
         mSourceFile = inFile;
 
@@ -271,9 +275,11 @@ void SourceAudioManager::clear()
 
     mSourceAudio = {};
     mDownsampledSourceAudio = {};
+    mWhisperSourceAudio16k = {};
 
     mNumSamplesAcquiredDown = 0;
     mNumSamplesAcquired = 0;
+    mNumSamplesAcquired16k = 0;
     mDuration = 0.0;
 
     _deleteFilesToDelete();
@@ -311,6 +317,20 @@ double SourceAudioManager::getAudioSampleDuration() const
 AudioThumbnail* SourceAudioManager::getAudioThumbnail()
 {
     return &mThumbnail;
+}
+
+float* SourceAudioManager::getAudioResampled16k()
+{
+    if (mWhisperSourceAudio16k.getNumSamples() == 0) {
+        return nullptr;
+    }
+
+    return mWhisperSourceAudio16k.getWritePointer(0);
+}
+
+int SourceAudioManager::getNumSamples16k() const
+{
+    return static_cast<int>(mNumSamplesAcquired16k);
 }
 
 void SourceAudioManager::valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property)
@@ -356,4 +376,20 @@ void SourceAudioManager::_deleteFilesToDelete()
     }
 
     mFilesToDelete.clear();
+}
+
+void SourceAudioManager::_updateWhisperAudioBuffer()
+{
+    if (mDownsampledSourceAudio.getNumSamples() == 0) {
+        mWhisperSourceAudio16k.setSize(0, 0);
+        mNumSamplesAcquired16k = 0;
+        return;
+    }
+
+    AudioUtils::resampleBuffer(mDownsampledSourceAudio,
+                               mWhisperSourceAudio16k,
+                               BASIC_PITCH_SAMPLE_RATE,
+                               WhisperConstants::WHISPER_SAMPLE_RATE);
+
+    mNumSamplesAcquired16k = static_cast<unsigned long long>(mWhisperSourceAudio16k.getNumSamples());
 }

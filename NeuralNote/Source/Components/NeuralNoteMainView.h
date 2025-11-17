@@ -37,6 +37,10 @@ public:
 
     bool keyPressed(const KeyPress& key) override;
 
+    void setTimedWords(const std::vector<TimedWord>& words);
+
+    void clearTimedWords();
+
 private:
     void updateEnablements();
 

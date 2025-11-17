@@ -113,11 +113,22 @@ void VisualizationPanel::clear()
     mCombinedAudioMidiRegion.setSize(getWidth() - KEYBOARD_WIDTH, getHeight());
     mMidiFileDrag.setVisible(false);
     mFileTempo->setVisible(false);
+    mCombinedAudioMidiRegion.clearTimedWords();
 }
 
 void VisualizationPanel::repaintPianoRoll()
 {
     mCombinedAudioMidiRegion.repaintPianoRoll();
+}
+
+void VisualizationPanel::setTimedWords(const std::vector<TimedWord>& words)
+{
+    mCombinedAudioMidiRegion.setTimedWords(words);
+}
+
+void VisualizationPanel::clearTimedWords()
+{
+    mCombinedAudioMidiRegion.clearTimedWords();
 }
 
 void VisualizationPanel::setMidiFileDragComponentVisible()

@@ -156,6 +156,20 @@ NeuralNoteMainView* NeuralNoteAudioProcessor::getNeuralNoteMainView() const
     return nullptr;
 }
 
+void NeuralNoteAudioProcessor::updateTimedWordsOnUI(const std::vector<TimedWord>& words)
+{
+    if (auto* view = getNeuralNoteMainView()) {
+        view->setTimedWords(words);
+    }
+}
+
+void NeuralNoteAudioProcessor::clearTimedWordsOnUI()
+{
+    if (auto* view = getNeuralNoteMainView()) {
+        view->clearTimedWords();
+    }
+}
+
 AudioProcessorValueTreeState& NeuralNoteAudioProcessor::getAPVTS()
 {
     return mAPVTS;

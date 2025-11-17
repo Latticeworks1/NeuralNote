@@ -10,10 +10,14 @@ CombinedAudioMidiRegion::CombinedAudioMidiRegion(NeuralNoteAudioProcessor* proce
     , mSupportedAudioFileExtensions(AudioUtils::getSupportedAudioFileExtensions())
     , mAudioRegion(processor, mBaseNumPixelsPerSecond)
     , mPianoRoll(processor, keyboard, mBaseNumPixelsPerSecond)
+    , mTextRegion(processor)
 {
     mProcessor->addListenerToStateValueTree(this);
     addAndMakeVisible(mAudioRegion);
     addAndMakeVisible(mPianoRoll);
+    addAndMakeVisible(mTextRegion);
+    mTextRegion.setInterceptsMouseClicks(false, false);
+    mTextRegion.toFront(false);
     mProcessor->getSourceAudioManager()->getAudioThumbnail()->addChangeListener(this);
     _setZoomLevel(mProcessor->getValueTree().getProperty(NnId::ZoomLevelId, 1.0));
 }
@@ -27,6 +31,7 @@ CombinedAudioMidiRegion::~CombinedAudioMidiRegion()
 void CombinedAudioMidiRegion::resized()
 {
     mAudioRegion.setBounds(0, 0, getWidth(), mAudioRegionHeight);
+    mTextRegion.setBounds(mAudioRegion.getBounds());
     mPianoRoll.setBounds(0, mPianoRollY, getWidth(), getHeight() - mPianoRollY);
 }
 
@@ -205,8 +210,22 @@ void CombinedAudioMidiRegion::_setZoomLevel(double inZoomLevel)
     mZoomLevel = std::clamp(inZoomLevel, mMinZoomLevel, mMaxZoomLevel);
     mPianoRoll.setZoomLevel(mZoomLevel);
     mAudioRegion.setZoomLevel(mZoomLevel);
+    mTextRegion.setZoomLevel(mZoomLevel);
     mProcessor->getValueTree().setPropertyExcludingListener(this, NnId::ZoomLevelId, mZoomLevel, nullptr);
     resizeAccordingToNumSamplesAvailable();
+}
+
+void CombinedAudioMidiRegion::moved()
+{
+    Component::moved();
+
+    const double pixelsPerSecond = mBaseNumPixelsPerSecond * mZoomLevel;
+    if (pixelsPerSecond <= 0.0) {
+        return;
+    }
+
+    const double offsetSeconds = -static_cast<double>(getX()) / pixelsPerSecond;
+    mTextRegion.setViewportOffset(offsetSeconds);
 }
 
 void CombinedAudioMidiRegion::valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged,
@@ -217,4 +236,14 @@ void CombinedAudioMidiRegion::valueTreePropertyChanged(ValueTree& treeWhosePrope
         _setZoomLevel(treeWhosePropertyHasChanged.getProperty(property));
         mViewportPtr->setViewPosition(roundToInt(time_start_view * mBaseNumPixelsPerSecond * mZoomLevel), 0);
     }
+}
+
+void CombinedAudioMidiRegion::setTimedWords(const std::vector<TimedWord>& words)
+{
+    mTextRegion.setTimedWords(words);
+}
+
+void CombinedAudioMidiRegion::clearTimedWords()
+{
+    mTextRegion.clear();
 }

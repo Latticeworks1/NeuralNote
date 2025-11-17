@@ -2,6 +2,30 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include <cstring>
+
+#include "WhisperModelLoader.h"
+
+namespace
+{
+constexpr const char* kWhisperPlaceholderMagic = "NEURALNOTE_WHISPER_PLACEHOLDER";
+
+bool isPlaceholderModelData(const char* data, size_t size)
+{
+    if (data == nullptr || size == 0) {
+        return true;
+    }
+
+    const size_t markerSize = std::strlen(kWhisperPlaceholderMagic);
+    if (size < markerSize) {
+        return false;
+    }
+
+    const char* begin = data;
+    const char* end = data + size;
+    return std::search(begin, end, kWhisperPlaceholderMagic, kWhisperPlaceholderMagic + markerSize) != end;
+}
+} // namespace
 
 WhisperONNX::WhisperONNX()
     : mEnv(ORT_LOGGING_LEVEL_WARNING, "WhisperONNX")
@@ -17,20 +41,49 @@ WhisperONNX::WhisperONNX()
         mDecoderSessionOptions.SetInterOpNumThreads(1);
         mDecoderSessionOptions.SetIntraOpNumThreads(1);
 
-        // TODO: Load encoder and decoder models when binary data is available
-        // For now, mark as not initialized since models aren't embedded yet
-        // mEncoderSession = Ort::Session(mEnv, BinaryData::whisper_encoder_ort,
-        //                                BinaryData::whisper_encoder_ortSize, mEncoderSessionOptions);
-        // mDecoderSession = Ort::Session(mEnv, BinaryData::whisper_decoder_ort,
-        //                                BinaryData::whisper_decoder_ortSize, mDecoderSessionOptions);
+        const char* embeddedEncoder = BinaryData::whisper_encoder_ort;
+        const char* embeddedDecoder = BinaryData::whisper_decoder_ort;
+
+        size_t encoderSize = static_cast<size_t>(BinaryData::whisper_encoder_ortSize);
+        size_t decoderSize = static_cast<size_t>(BinaryData::whisper_decoder_ortSize);
+
+        bool hasValidEncoder = !isPlaceholderModelData(embeddedEncoder, encoderSize);
+        bool hasValidDecoder = !isPlaceholderModelData(embeddedDecoder, decoderSize);
+
+        const char* encoderData = embeddedEncoder;
+        const char* decoderData = embeddedDecoder;
+
+        if (!hasValidEncoder || !hasValidDecoder) {
+            auto loadResult = WhisperModelLoader::loadFromDefaultLocations(mExternalEncoderData, mExternalDecoderData);
+            if (loadResult.success) {
+                encoderData = reinterpret_cast<const char*>(mExternalEncoderData.data());
+                decoderData = reinterpret_cast<const char*>(mExternalDecoderData.data());
+                encoderSize = mExternalEncoderData.size();
+                decoderSize = mExternalDecoderData.size();
+                hasValidEncoder = hasValidDecoder = true;
+                mErrorMessage.clear();
+            } else {
+                mIsInitialized = false;
+                mErrorMessage = loadResult.message;
+            }
+        }
+
+        if (hasValidEncoder && hasValidDecoder) {
+            mEncoderSession = Ort::Session(mEnv, encoderData, encoderSize, mEncoderSessionOptions);
+            mDecoderSession = Ort::Session(mEnv, decoderData, decoderSize, mDecoderSessionOptions);
+            mIsInitialized = true;
+        }
 
         // Initialize mel filterbank
         initializeMelFilters();
 
-        // mIsInitialized = true;
-        mIsInitialized = false;
-        mErrorMessage = "Whisper models not yet embedded - placeholder implementation";
-
+        if (!mIsInitialized && mErrorMessage.empty()) {
+            mErrorMessage =
+                "Whisper models not embedded. Replace Lib/ModelData/whisper_encoder.ort and "
+                "Lib/ModelData/whisper_decoder.ort with real ONNX Runtime blobs (placeholder implementation).";
+        } else if (!mIsInitialized) {
+            mErrorMessage += " (placeholder implementation)";
+        }
     } catch (const Ort::Exception& e) {
         mIsInitialized = false;
         mErrorMessage = "ONNX Runtime error during Whisper model initialization: " + std::string(e.what());

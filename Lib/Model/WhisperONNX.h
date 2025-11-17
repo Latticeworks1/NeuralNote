@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <array>
+#include <cstdint>
 
 #include "BinaryData.h"
 #include "WhisperConstants.h"
@@ -108,4 +109,8 @@ private:
 
     // Encoder output cache
     std::vector<float> mEncoderOutputBuffer;
+
+    // External model buffers when models are loaded from disk
+    std::vector<uint8_t> mExternalEncoderData;
+    std::vector<uint8_t> mExternalDecoderData;
 };

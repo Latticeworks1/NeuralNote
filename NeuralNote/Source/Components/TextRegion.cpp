@@ -13,11 +13,10 @@ void TextRegion::resized()
 
 void TextRegion::paint(Graphics& g)
 {
-    // Background
-    g.fillAll(BLACK);
-
     if (mTimedWords.empty()) {
-        // Show placeholder text
+        g.setColour(BLACK.withAlpha(0.2f));
+        g.fillRect(getLocalBounds());
+
         g.setColour(WHITE_TRANSPARENT);
         g.setFont(Font(FontOptions()).withPointHeight(14.0f));
         g.drawText("Text transcription will appear here",
@@ -25,6 +24,9 @@ void TextRegion::paint(Graphics& g)
                    Justification::centred);
         return;
     }
+
+    g.setColour(BLACK.withAlpha(0.35f));
+    g.fillRect(getLocalBounds());
 
     // Draw all words with timestamps
     g.setFont(Font(FontOptions()).withPointHeight(12.0f));
@@ -48,7 +50,7 @@ void TextRegion::paint(Graphics& g)
 
         // Draw word background
         if (isCurrent) {
-            g.setColour(WHITE_TRANSPARENT.withAlpha(0.2f));
+            g.setColour(WHITE_TRANSPARENT.withAlpha(0.3f));
             g.fillRect(x, 0.0f, width, static_cast<float>(getHeight()));
         }
 

@@ -122,6 +122,30 @@ But here's a description of the process we followed to create those files:
 
 The original basic-pitch CNN was split in 4 sequential models wired together, so they can be run with RTNeural.
 
+## Whisper model downloads (experimental text transcription)
+
+Text transcription support expects two ONNX Runtime blobs (`whisper_encoder.ort` and `whisper_decoder.ort`). These
+files are not distributed with the repository. You can download/export your preferred Whisper variant and place the
+resulting `.ort` files inside `Lib/ModelData/` (re-run CMake afterwards) or in an external directory referenced by the
+`NEURALNOTE_WHISPER_DIR` environment variable.
+
+To automate the download, use the helper script:
+
+```bash
+python Scripts/download_whisper_models.py \
+    --encoder-url https://example.com/path/to/whisper_encoder.ort \
+    --decoder-url https://example.com/path/to/whisper_decoder.ort
+```
+
+If the models are not embedded at build time, NeuralNote will search the following directories at runtime:
+
+- `$NEURALNOTE_WHISPER_DIR`
+- `~/Library/Application Support/NeuralNote/Models` (macOS)
+- `%APPDATA%\NeuralNote\Models` (Windows)
+- `~/.local/share/NeuralNote/Models` or `~/.neuralnote/models` (Linux)
+
+Copy both `.ort` files into any of these directories to enable the Whisper backend without rebuilding the plugin.
+
 ## Bug reports and feature requests
 
 If you have any request/suggestion concerning the plugin or encounter a bug, please file a GitHub issue.

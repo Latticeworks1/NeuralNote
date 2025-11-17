@@ -62,18 +62,24 @@ void TextTranscriptionManager::_runModel()
         return;
     }
 
-    // Get audio from processor (resampled to 16kHz)
     auto* sourceAudioManager = mProcessor->getSourceAudioManager();
+    if (sourceAudioManager == nullptr) {
+        DBG("Text transcription skipped - missing SourceAudioManager");
+        return;
+    }
 
-    // TODO: Implement getAudioResampled16k() in SourceAudioManager
-    // For now, this is a placeholder
-    // auto* audio16k = sourceAudioManager.getAudioResampled16k();
-    // int numSamples = sourceAudioManager.getNumSamples16k();
+    float* audio16k = sourceAudioManager->getAudioResampled16k();
+    const int numSamples = sourceAudioManager->getNumSamples16k();
 
-    // Placeholder: Skip actual transcription until audio resampling is implemented
-    // mWhisperTranscriber.transcribeToText(audio16k, numSamples);
+    if (audio16k == nullptr || numSamples == 0) {
+        DBG("Text transcription skipped - 16kHz audio not available yet");
+        return;
+    }
 
-    DBG("Text transcription job executed (placeholder - awaiting 16kHz audio implementation)");
+    auto words = mWhisperTranscriber.transcribeToText(audio16k, numSamples);
+    if (words.empty()) {
+        DBG("Text transcription completed but returned no tokens.");
+    }
 
     // Signal UI update
     mShouldUpdateDisplay = true;
@@ -83,10 +89,12 @@ void TextTranscriptionManager::_updateTranscriptionDisplay()
 {
     mShouldUpdateDisplay = false;
 
-    // TODO: Update TextRegion UI component with new transcription
-    // This will be implemented when UI components are added
-
-    DBG("Text transcription display updated");
+    const auto& words = mWhisperTranscriber.getTimedWords();
+    if (words.empty()) {
+        mProcessor->clearTimedWordsOnUI();
+    } else {
+        mProcessor->updateTimedWordsOnUI(words);
+    }
 }
 
 void TextTranscriptionManager::parameterChanged(const String& parameterID, float newValue)
@@ -117,6 +125,7 @@ void TextTranscriptionManager::clear()
     mWhisperTranscriber.reset();
     mShouldRunNewTranscription = false;
     mShouldUpdateDisplay = false;
+    mProcessor->clearTimedWordsOnUI();
 }
 
 void TextTranscriptionManager::setLanguage(WhisperConstants::Language language)

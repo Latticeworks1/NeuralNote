@@ -304,6 +304,16 @@ void NeuralNoteMainView::repaintPianoRoll()
     mVisualizationPanel.repaintPianoRoll();
 }
 
+void NeuralNoteMainView::setTimedWords(const std::vector<TimedWord>& words)
+{
+    mVisualizationPanel.setTimedWords(words);
+}
+
+void NeuralNoteMainView::clearTimedWords()
+{
+    mVisualizationPanel.clearTimedWords();
+}
+
 bool NeuralNoteMainView::keyPressed(const KeyPress& key)
 {
     if (key == KeyPress(KeyPress::spaceKey, ModifierKeys::shiftModifier, 0)) {

@@ -62,6 +62,10 @@ public:
 
     NeuralNoteMainView* getNeuralNoteMainView() const;
 
+    void updateTimedWordsOnUI(const std::vector<TimedWord>& words);
+
+    void clearTimedWordsOnUI();
+
     AudioProcessorValueTreeState& getAPVTS();
 
     ValueTree& getValueTree();
