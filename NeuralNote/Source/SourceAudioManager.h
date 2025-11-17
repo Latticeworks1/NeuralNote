@@ -129,9 +129,9 @@ private:
 
     double mSampleRate = 44100;
 
-    unsigned long long mNumSamplesAcquired = 0;
-    unsigned long long mNumSamplesAcquiredDown = 0;
-    double mDuration = 0.0;
+    std::atomic<unsigned long long> mNumSamplesAcquired = 0;
+    std::atomic<unsigned long long> mNumSamplesAcquiredDown = 0;
+    std::atomic<double> mDuration = 0.0;
 
     String mDroppedFilename;
 

@@ -19,6 +19,18 @@ public:
     BasicPitch() = default;
 
     /**
+     * Check if the model was successfully initialized
+     * @return true if model is ready to use, false if initialization failed
+     */
+    bool isInitialized() const { return mFeaturesCalculator.isInitialized(); }
+
+    /**
+     * Get error message if initialization failed
+     * @return Error message string, or empty string if no error
+     */
+    const std::string& getErrorMessage() const { return mFeaturesCalculator.getErrorMessage(); }
+
+    /**
      * Resets all states of model, clear the posteriorgrams vector computed by the CNN and the note event vector.
      */
     void reset();

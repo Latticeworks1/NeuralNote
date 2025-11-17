@@ -58,6 +58,23 @@ void BasicPitch::transcribeToMIDI(float* inAudio, int inNumSamples)
 
     const float* stacked_cqt = mFeaturesCalculator.computeFeatures(inAudio, inNumSamples, mNumFrames);
 
+    // Check if feature computation succeeded
+    if (stacked_cqt == nullptr || mNumFrames == 0) {
+        // Feature extraction failed (likely due to model initialization failure)
+        mNoteEvents.clear();
+        return;
+    }
+
+    const size_t num_lh_frames = BasicPitchCNN::getNumFramesLookahead();
+
+    // Validate that we have enough frames for the lookahead processing
+    if (mNumFrames < num_lh_frames) {
+        DBG("WARNING: Insufficient frames for CNN processing. Need at least "
+            + String(num_lh_frames) + " frames, got " + String(mNumFrames));
+        mNoteEvents.clear();
+        return;
+    }
+
     mOnsetsPG.resize(mNumFrames, std::vector<float>(static_cast<size_t>(NUM_FREQ_OUT), 0.0f));
     mNotesPG.resize(mNumFrames, std::vector<float>(static_cast<size_t>(NUM_FREQ_OUT), 0.0f));
     mContoursPG.resize(mNumFrames, std::vector<float>(static_cast<size_t>(NUM_FREQ_IN), 0.0f));
@@ -68,12 +85,10 @@ void BasicPitch::transcribeToMIDI(float* inAudio, int inNumSamples)
 
     mBasicPitchCNN.reset();
 
-    const size_t num_lh_frames = BasicPitchCNN::getNumFramesLookahead();
-
     std::vector<float> zero_stacked_cqt(NUM_HARMONICS * NUM_FREQ_IN, 0.0f);
 
     // Run the CNN with 0 input and discard output (only for num_lh_frames)
-    for (int i = 0; i < num_lh_frames; i++) {
+    for (size_t i = 0; i < num_lh_frames; i++) {
         mBasicPitchCNN.frameInference(zero_stacked_cqt.data(), mContoursPG[0], mNotesPG[0], mOnsetsPG[0]);
     }
 
@@ -84,11 +99,14 @@ void BasicPitch::transcribeToMIDI(float* inAudio, int inNumSamples)
     }
 
     // Run the CNN with real inputs and correct outputs
+    // Safe because we validated mNumFrames >= num_lh_frames above
     for (size_t frame_idx = num_lh_frames; frame_idx < mNumFrames; frame_idx++) {
+        size_t output_idx = frame_idx - num_lh_frames;
+        jassert(output_idx < mContoursPG.size() && output_idx < mNotesPG.size() && output_idx < mOnsetsPG.size());
         mBasicPitchCNN.frameInference(stacked_cqt + frame_idx * NUM_HARMONICS * NUM_FREQ_IN,
-                                      mContoursPG[frame_idx - num_lh_frames],
-                                      mNotesPG[frame_idx - num_lh_frames],
-                                      mOnsetsPG[frame_idx - num_lh_frames]);
+                                      mContoursPG[output_idx],
+                                      mNotesPG[output_idx],
+                                      mOnsetsPG[output_idx]);
     }
 
     // Run end with zeroes as input and last frames as output

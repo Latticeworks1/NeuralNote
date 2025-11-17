@@ -22,11 +22,23 @@ public:
     ~Features() = default;
 
     /**
+     * Check if ONNX model was successfully loaded
+     * @return true if model initialized successfully, false otherwise
+     */
+    bool isInitialized() const { return mIsInitialized; }
+
+    /**
+     * Get error message if initialization failed
+     * @return Error message string, or empty string if no error
+     */
+    const std::string& getErrorMessage() const { return mErrorMessage; }
+
+    /**
      * Compute features for full audio signal
      * @param inAudio Input audio. Should contain inNumSamples
      * @param inNumSamples Number of samples in inAudio
      * @param outNumFrames Number of frames that have been computed.
-     * @return Pointer to features.
+     * @return Pointer to features, or nullptr if not initialized.
      */
     const float* computeFeatures(float* inAudio, size_t inNumSamples, size_t& outNumFrames);
 
@@ -47,6 +59,10 @@ private:
     Ort::Env mEnv;
     Ort::Session mSession;
     Ort::RunOptions mRunOptions;
+
+    // Initialization state
+    bool mIsInitialized = false;
+    std::string mErrorMessage;
 };
 
 #endif // Features_h

@@ -81,13 +81,19 @@ const MidiBuffer& SynthController::generateNextMidiBuffer(int inNumSamples)
 
     double end_time = mCurrentTime + inNumSamples / mSampleRate;
 
-    while (mCurrentEventIndex < mEvents.size() && mEvents[mCurrentEventIndex].getTimeStamp() < end_time) {
-        int index = std::clamp(static_cast<int>(std::round(mEvents[mCurrentEventIndex].getTimeStamp() - mCurrentTime)),
-                               0,
-                               inNumSamples - 1);
+    // Thread-safe access: Hold lock while reading from mEvents vector
+    // to prevent race condition with setNewMidiEventsVectorToUse()
+    {
+        const ScopedLock sl(mProcessor->getCallbackLock());
 
-        mMidiBuffer.addEvent(mEvents[mCurrentEventIndex], index);
-        mCurrentEventIndex += 1;
+        while (mCurrentEventIndex < mEvents.size() && mEvents[mCurrentEventIndex].getTimeStamp() < end_time) {
+            int index = std::clamp(static_cast<int>(std::round(mEvents[mCurrentEventIndex].getTimeStamp() - mCurrentTime)),
+                                   0,
+                                   inNumSamples - 1);
+
+            mMidiBuffer.addEvent(mEvents[mCurrentEventIndex], index);
+            mCurrentEventIndex += 1;
+        }
     }
 
     mCurrentTime = end_time;
@@ -115,6 +121,8 @@ void SynthController::setNewTimeSeconds(double inNewTime)
     jassert(inNewTime >= 0);
     mCurrentTime = inNewTime;
     mCurrentSampleIndex = static_cast<int>(std::round(inNewTime * mSampleRate));
+
+    const ScopedLock sl(mProcessor->getCallbackLock());
     _updateCurrentEventIndex();
     _sanitizeVoices();
 }
