@@ -72,11 +72,15 @@ void TranscriptionManager::setLaunchNewTranscription()
 
 void TranscriptionManager::parameterChanged(const String& parameterID, float newValue)
 {
+    // Note: APVTS has already stored the parameter value before calling this callback.
+    // We only need to set flags to trigger appropriate updates.
+    // The unused newValue parameter is kept for interface compatibility.
+    juce::ignoreUnused(newValue);
+
     if (mProcessor->getState() == PopulatedAudioAndMidiRegions) {
         if (parameterID == ParameterHelpers::getIdStr(ParameterHelpers::NoteSensitivityId)
             || parameterID == ParameterHelpers::getIdStr(ParameterHelpers::SplitSensitivityId)
             || parameterID == ParameterHelpers::getIdStr(ParameterHelpers::MinimumNoteDurationId)) {
-            mProcessor->getAPVTS().getRawParameterValue(parameterID)->store(newValue);
             mShouldUpdateTranscription = true;
 
         } else if (parameterID == ParameterHelpers::getIdStr(ParameterHelpers::EnableNoteQuantizationId)
@@ -88,10 +92,8 @@ void TranscriptionManager::parameterChanged(const String& parameterID, float new
                    || parameterID == ParameterHelpers::getIdStr(ParameterHelpers::EnableTimeQuantizationId)
                    || parameterID == ParameterHelpers::getIdStr(ParameterHelpers::TimeDivisionId)
                    || parameterID == ParameterHelpers::getIdStr(ParameterHelpers::QuantizationForceId)) {
-            mProcessor->getAPVTS().getRawParameterValue(parameterID)->store(newValue);
             mShouldUpdatePostProcessing = true;
         } else if (parameterID == ParameterHelpers::getIdStr(ParameterHelpers::PitchBendModeId)) {
-            mProcessor->getAPVTS().getRawParameterValue(parameterID)->store(newValue);
             mShouldRepaintPianoRoll = true;
         }
     }
