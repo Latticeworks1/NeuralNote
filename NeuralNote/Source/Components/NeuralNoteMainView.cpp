@@ -158,6 +158,14 @@ NeuralNoteMainView::NeuralNoteMainView(NeuralNoteAudioProcessor& processor)
     reset_zoom_item.setAction(reset_zoom_action);
     mSettingsMenu->addItem(reset_zoom_item);
 
+    // Reload background
+    auto reload_bg_item = PopupMenu::Item("Reload Background");
+    reload_bg_item.setID(++item_id);
+    reload_bg_item.setTicked(false);
+    auto reload_bg_action = [this] { reloadBackground(); };
+    reload_bg_item.setAction(reload_bg_action);
+    mSettingsMenu->addItem(reload_bg_item);
+
     // Tooltip visibility
     auto tooltip_visibility_item = PopupMenu::Item("Show Tooltips");
     tooltip_visibility_item.setID(++item_id);
