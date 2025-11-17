@@ -37,6 +37,12 @@ const float* Features::computeFeatures(float* inAudio, size_t inNumSamples, size
         return nullptr;
     }
 
+    // Validate input parameters
+    if (inAudio == nullptr || inNumSamples == 0) {
+        outNumFrames = 0;
+        return nullptr;
+    }
+
     mInputShape[0] = 1;
     mInputShape[1] = static_cast<int64_t>(inNumSamples);
     mInputShape[2] = 1;
