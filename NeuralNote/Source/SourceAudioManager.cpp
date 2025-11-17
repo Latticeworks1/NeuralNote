@@ -49,7 +49,13 @@ void SourceAudioManager::processBlock(const AudioBuffer<float>& inBuffer)
 
         // Write incoming audio to file at native sample rate
         bool result = mThreadedWriter->write(inBuffer.getArrayOfReadPointers(), inBuffer.getNumSamples());
-        jassertquiet(result);
+        if (!result) {
+            // Recording write failed - stop recording to prevent data loss
+            DBG("WARNING: Failed to write audio samples at native rate. Stopping recording.");
+            // Note: We continue processing this block but will stop recording after
+            mIsRecording.store(false);
+        }
+
         mNumSamplesAcquired += inBuffer.getNumSamples();
         mDuration = static_cast<double>(mNumSamplesAcquiredDown) / BASIC_PITCH_SAMPLE_RATE;
 
@@ -70,7 +76,11 @@ void SourceAudioManager::processBlock(const AudioBuffer<float>& inBuffer)
         // Write downsampled audio to file at downsampled sample rate
         bool result_down =
             mThreadedWriterDown->write(mInternalDownsampledBuffer.getArrayOfReadPointers(), num_samples_down);
-        jassertquiet(result_down);
+        if (!result_down) {
+            // Downsampled write failed - stop recording to prevent data loss
+            DBG("WARNING: Failed to write downsampled audio samples. Stopping recording.");
+            mIsRecording.store(false);
+        }
 
         mNumSamplesAcquiredDown += num_samples_down;
     }
@@ -86,8 +96,13 @@ void SourceAudioManager::startRecording()
 
     // Prepare files to be written
     if (!mNeuralNoteDir.isDirectory()) {
-        bool res = mNeuralNoteDir.createDirectory();
-        jassertquiet(res);
+        Result res = mNeuralNoteDir.createDirectory();
+        if (!res.wasOk()) {
+            NativeMessageBox::showMessageBoxAsync(MessageBoxIconType::WarningIcon,
+                                                   "Error",
+                                                   "Failed to create NeuralNote directory:\n" + res.getErrorMessage());
+            return;
+        }
     }
 
     mDroppedFilename = "";
@@ -329,8 +344,13 @@ void SourceAudioManager::_deleteFilesToDelete()
         // Make sure we only ever delete files that have been recorded, not loaded from disk.
         if (file.getParentDirectory() == mNeuralNoteDir) {
             bool res = file.deleteFile();
-            jassertquiet(res);
+            if (!res) {
+                // Log error but continue - file deletion failures shouldn't break the plugin
+                DBG("WARNING: Failed to delete temporary file: " + file.getFullPathName());
+            }
         } else {
+            // This should never happen - we're trying to delete a file outside our directory
+            DBG("ERROR: Attempted to delete file outside NeuralNote directory: " + file.getFullPathName());
             jassertfalse;
         }
     }

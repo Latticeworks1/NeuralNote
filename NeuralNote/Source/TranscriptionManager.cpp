@@ -11,6 +11,15 @@ TranscriptionManager::TranscriptionManager(NeuralNoteAudioProcessor* inProcessor
     , mTimeQuantizeOptions(inProcessor)
     , mThreadPool(1)
 {
+    // Check if model initialization succeeded
+    if (!mBasicPitch.isInitialized()) {
+        DBG("ERROR: BasicPitch model failed to initialize: " + mBasicPitch.getErrorMessage());
+        NativeMessageBox::showMessageBoxAsync(MessageBoxIconType::WarningIcon,
+                                               "NeuralNote Initialization Error",
+                                               "Failed to load transcription model:\n" + mBasicPitch.getErrorMessage()
+                                                   + "\n\nThe plugin will load but transcription will not work.");
+    }
+
     mJobLambda = [this] { _runModel(); };
 
     auto& apvts = mProcessor->getAPVTS();
