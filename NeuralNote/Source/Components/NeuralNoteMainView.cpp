@@ -313,6 +313,11 @@ bool NeuralNoteMainView::keyPressed(const KeyPress& key)
         return true;
     }
 
+    if (key == KeyPress('b', juce::ModifierKeys::commandModifier, 0)) {
+        reloadBackground();
+        return true;
+    }
+
     if (key == KeyPress('r', juce::ModifierKeys::noModifiers, 0)) {
         mRecordButton->triggerClick();
         return true;
@@ -408,4 +413,22 @@ void NeuralNoteMainView::_updateTooltipVisibility()
     } else {
         mTooltipWindow = nullptr;
     }
+}
+
+void NeuralNoteMainView::reloadBackground()
+{
+    // Try to load from Desktop first (for easy testing)
+    File desktopBg = File::getSpecialLocation(File::userDesktopDirectory).getChildFile("background.png");
+
+    if (desktopBg.existsAsFile()) {
+        mBackgroundImage = ImageCache::getFromFile(desktopBg);
+        DBG("Loaded background from: " + desktopBg.getFullPathName());
+    } else {
+        // Fallback to embedded default
+        mBackgroundImage = ImageCache::getFromMemory(BinaryData::background_png, BinaryData::background_pngSize);
+        DBG("Loaded default embedded background");
+    }
+
+    repaint();
+    DBG("Background reloaded! (Cmd+B to reload again)");
 }

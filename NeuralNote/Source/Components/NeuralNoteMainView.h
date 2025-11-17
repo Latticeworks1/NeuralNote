@@ -87,6 +87,7 @@ private:
     std::unique_ptr<ComboBox> mMode; // Major, Minor, Chromatic
 
     Image mBackgroundImage;
+    void reloadBackground(); // Hot-reload background image
 
     int mNumCallbacksStuckInProcessingState = 0;
 
