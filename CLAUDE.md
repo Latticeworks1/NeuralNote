@@ -182,3 +182,59 @@ Build with:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUniversalBinary=ON -DLTO=ON
 cmake --build build -j $(nproc)
 ```
+
+## UI Development Patterns & Common Gotchas
+
+### Image Handling
+
+**Background Image Requirements:**
+- All background images MUST be rescaled to **1000x640** pixels
+- Use `Graphics::ResamplingQuality::highResamplingQuality` for best quality
+- Both loading and reloading must include rescaling
+
+**Example (from NeuralNoteMainView.cpp:232-233):**
+```cpp
+mBackgroundImage = ImageCache::getFromMemory(BinaryData::background_png, BinaryData::background_pngSize)
+                       .rescaled(1000, 640, Graphics::ResamplingQuality::highResamplingQuality);
+```
+
+**Common Mistake:** Loading/reloading images without the `.rescaled()` step causes distorted backgrounds.
+
+### UI Colors
+
+**Color Definitions:** `Lib/Components/UIDefines.h:66-74`
+- `BLACK`: RGB(14, 14, 14)
+- `WHITE_SOLID`: RGB(255, 253, 246) - off-white cream
+- `WHITE_TRANSPARENT`: RGB(255, 253, 246, 0.7f)
+- `KNOB_GREY`: RGB(218, 221, 217)
+- Maintain color consistency across the UI
+
+### Settings Menu Pattern
+
+Adding items to settings menu (NeuralNoteMainView.cpp:132+):
+1. Increment `item_id`
+2. Create `PopupMenu::Item` with label
+3. Set ID and enabled state
+4. For toggle items: add to `mSettingsMenuItemsShouldBeTicked`
+5. Define action lambda
+6. Call `setAction()` and `addItem()`
+
+### Keyboard Shortcuts
+
+Handled in `NeuralNoteMainView::keyPressed()`:
+- Use `ModifierKeys::commandModifier` for Cmd/Ctrl
+- Return `true` if key handled, `false` otherwise
+- Check `KeyPress` equality: `key == KeyPress('b', ModifierKeys::commandModifier, 0)`
+
+### Hot-Reload Background Feature
+
+**Location:** Settings menu → "Reload Background" or `Cmd+B`
+- Checks `~/Desktop/background.png` first
+- Falls back to embedded `BinaryData::background_png`
+- Always rescales to 1000x640
+- Useful for testing different background designs without rebuilding
+
+## Naming Conventions
+
+- Never name things "FIXED" or "UPDATED" in filenames or app names
+- Use descriptive, neutral names for builds and artifacts
