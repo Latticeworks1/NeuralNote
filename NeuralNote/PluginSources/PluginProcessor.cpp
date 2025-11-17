@@ -18,6 +18,7 @@ NeuralNoteAudioProcessor::NeuralNoteAudioProcessor()
     mSourceAudioManager = std::make_unique<SourceAudioManager>(this);
     mPlayer = std::make_unique<Player>(this);
     mTranscriptionManager = std::make_unique<TranscriptionManager>(this);
+    mTextTranscriptionManager = std::make_unique<TextTranscriptionManager>(this);
 }
 
 NeuralNoteAudioProcessor::~NeuralNoteAudioProcessor()
@@ -109,6 +110,7 @@ void NeuralNoteAudioProcessor::clear()
     mPlayer->reset();
     mSourceAudioManager->clear();
     mTranscriptionManager->clear();
+    mTextTranscriptionManager->clear();
 
     mState.store(EmptyAudioAndMidiRegions);
 }
@@ -126,6 +128,11 @@ Player* NeuralNoteAudioProcessor::getPlayer() const
 TranscriptionManager* NeuralNoteAudioProcessor::getTranscriptionManager() const
 {
     return mTranscriptionManager.get();
+}
+
+TextTranscriptionManager* NeuralNoteAudioProcessor::getTextTranscriptionManager() const
+{
+    return mTextTranscriptionManager.get();
 }
 
 std::array<RangedAudioParameter*, ParameterHelpers::TotalNumParams>& NeuralNoteAudioProcessor::getParams()

@@ -13,6 +13,7 @@
 #include "SourceAudioManager.h"
 #include "ParameterHelpers.h"
 #include "TranscriptionManager.h"
+#include "TextTranscriptionManager.h"
 #include "NnId.h"
 
 class NeuralNoteMainView;
@@ -53,6 +54,8 @@ public:
 
     TranscriptionManager* getTranscriptionManager() const;
 
+    TextTranscriptionManager* getTextTranscriptionManager() const;
+
     std::array<RangedAudioParameter*, ParameterHelpers::TotalNumParams>& getParams();
 
     float getParameterValue(ParameterHelpers::ParamIdEnum inParamId) const;
@@ -85,5 +88,6 @@ private:
     std::unique_ptr<SourceAudioManager> mSourceAudioManager;
     std::unique_ptr<Player> mPlayer;
     std::unique_ptr<TranscriptionManager> mTranscriptionManager;
+    std::unique_ptr<TextTranscriptionManager> mTextTranscriptionManager;
     std::unique_ptr<FileLogger> mLogger;
 };
