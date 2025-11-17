@@ -1,31 +1,50 @@
 #pragma once
 
 #include "WhisperONNX.h"
+#include "WhisperHTTPClient.h"
 #include "WhisperConstants.h"
 #include <vector>
 #include <string>
+#include <memory>
 
 /**
  * Main API class for speech-to-text transcription using Whisper model
  * Provides high-level interface for converting audio to transcribed text
+ *
+ * Supports two backends:
+ * 1. ONNX Runtime (local, embedded models)
+ * 2. HTTP Service (Hugging Face Transformers via Python service)
  */
 class WhisperTranscriber
 {
 public:
-    WhisperTranscriber() = default;
+    enum class Backend {
+        ONNX,          // Use local ONNX Runtime models
+        HTTPService,   // Use remote HTTP service (Hugging Face Transformers)
+        Auto           // Auto-select: HTTP if available, fallback to ONNX
+    };
+
+    WhisperTranscriber(Backend backend = Backend::Auto,
+                       const juce::String& serviceUrl = "http://127.0.0.1:8765");
     ~WhisperTranscriber() = default;
 
     /**
-     * Check if the Whisper model was successfully initialized
-     * @return true if model is ready to use, false if initialization failed
+     * Check if the Whisper backend is ready
+     * @return true if backend is ready to use, false if initialization failed
      */
-    bool isInitialized() const { return mWhisperONNX.isInitialized(); }
+    bool isInitialized() const;
 
     /**
      * Get error message if initialization failed
      * @return Error message string, or empty string if no error
      */
-    const std::string& getErrorMessage() const { return mWhisperONNX.getErrorMessage(); }
+    const std::string& getErrorMessage() const;
+
+    /**
+     * Get the active backend being used
+     * @return Active backend type
+     */
+    Backend getActiveBackend() const { return mActiveBackend; }
 
     /**
      * Set language for transcription
@@ -65,7 +84,15 @@ public:
     void reset();
 
 private:
+    void selectBackend(Backend preferredBackend);
+
+    Backend mRequestedBackend;
+    Backend mActiveBackend;
+
     WhisperONNX mWhisperONNX;
+    std::unique_ptr<WhisperHTTPClient> mHTTPClient;
+
     WhisperConstants::Language mLanguage = WhisperConstants::Language::Auto;
     std::vector<TimedWord> mTimedWords;
+    mutable std::string mErrorMessage;
 };

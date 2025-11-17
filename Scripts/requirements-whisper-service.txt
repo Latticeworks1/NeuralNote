@@ -1,0 +1,16 @@
+# Requirements for NeuralNote Whisper Transcription Service
+# Install with: pip install -r Scripts/requirements-whisper-service.txt
+
+# Core dependencies
+flask>=3.0.0
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.25.0
+
+# Audio processing
+numpy>=1.24.0
+librosa>=0.10.0  # For audio resampling if needed
+
+# Optional: For faster inference
+# flash-attn>=2.0.0  # Uncomment if your GPU supports Flash Attention
+# optimum>=1.14.0    # For ONNX Runtime integration (alternative approach)
