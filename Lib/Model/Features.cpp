@@ -8,16 +8,35 @@ Features::Features()
     : mMemoryInfo(nullptr)
     , mSession(nullptr)
 {
-    mMemoryInfo = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
+    try {
+        mMemoryInfo = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
 
-    mSessionOptions.SetInterOpNumThreads(1);
-    mSessionOptions.SetIntraOpNumThreads(1);
+        mSessionOptions.SetInterOpNumThreads(1);
+        mSessionOptions.SetIntraOpNumThreads(1);
 
-    mSession = Ort::Session(mEnv, BinaryData::features_model_ort, BinaryData::features_model_ortSize, mSessionOptions);
+        mSession = Ort::Session(mEnv, BinaryData::features_model_ort, BinaryData::features_model_ortSize, mSessionOptions);
+
+        mIsInitialized = true;
+    } catch (const Ort::Exception& e) {
+        mIsInitialized = false;
+        mErrorMessage = "ONNX Runtime error during model initialization: " + std::string(e.what());
+    } catch (const std::exception& e) {
+        mIsInitialized = false;
+        mErrorMessage = "Error during model initialization: " + std::string(e.what());
+    } catch (...) {
+        mIsInitialized = false;
+        mErrorMessage = "Unknown error during model initialization";
+    }
 }
 
 const float* Features::computeFeatures(float* inAudio, size_t inNumSamples, size_t& outNumFrames)
 {
+    // Check if model was successfully initialized
+    if (!mIsInitialized) {
+        outNumFrames = 0;
+        return nullptr;
+    }
+
     mInputShape[0] = 1;
     mInputShape[1] = static_cast<int64_t>(inNumSamples);
     mInputShape[2] = 1;
@@ -35,5 +54,7 @@ const float* Features::computeFeatures(float* inAudio, size_t inNumSamples, size
 
     mInput.clear();
 
+    // Note: The returned pointer to mOutput[0] tensor data remains valid until the next
+    // Run() call or until mOutput is modified. Clearing mInput does not invalidate it.
     return mOutput[0].GetTensorData<float>();
 }
