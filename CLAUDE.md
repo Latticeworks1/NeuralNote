@@ -238,3 +238,4 @@ Handled in `NeuralNoteMainView::keyPressed()`:
 
 - Never name things "FIXED" or "UPDATED" in filenames or app names
 - Use descriptive, neutral names for builds and artifacts
+- Avoid generic placeholder names in commit messages and code
