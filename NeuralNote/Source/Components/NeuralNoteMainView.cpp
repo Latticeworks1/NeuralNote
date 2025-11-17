@@ -429,11 +429,13 @@ void NeuralNoteMainView::reloadBackground()
     File desktopBg = File::getSpecialLocation(File::userDesktopDirectory).getChildFile("background.png");
 
     if (desktopBg.existsAsFile()) {
-        mBackgroundImage = ImageCache::getFromFile(desktopBg);
+        mBackgroundImage = ImageCache::getFromFile(desktopBg)
+                               .rescaled(1000, 640, Graphics::ResamplingQuality::highResamplingQuality);
         DBG("Loaded background from: " + desktopBg.getFullPathName());
     } else {
         // Fallback to embedded default
-        mBackgroundImage = ImageCache::getFromMemory(BinaryData::background_png, BinaryData::background_pngSize);
+        mBackgroundImage = ImageCache::getFromMemory(BinaryData::background_png, BinaryData::background_pngSize)
+                               .rescaled(1000, 640, Graphics::ResamplingQuality::highResamplingQuality);
         DBG("Loaded default embedded background");
     }
 
