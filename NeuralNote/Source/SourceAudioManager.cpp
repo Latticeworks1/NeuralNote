@@ -211,6 +211,7 @@ void SourceAudioManager::stopRecording()
     tree.setPropertyExcludingListener(this, NnId::SourceAudioNativeSrPathId, mSourceFile.getFullPathName(), nullptr);
 
     mProcessor->getTranscriptionManager()->setLaunchNewTranscription();
+    mProcessor->getTextTranscriptionManager()->setLaunchNewTranscription();
 }
 
 bool SourceAudioManager::onFileDrop(const File& inFile)
@@ -257,8 +258,9 @@ bool SourceAudioManager::onFileDrop(const File& inFile)
         mThumbnailCache.clear();
         mThumbnail.setSource(&mDownsampledSourceAudio, BASIC_PITCH_SAMPLE_RATE, 0);
 
-        // Launch transcription job
+        // Launch transcription jobs
         mProcessor->getTranscriptionManager()->launchTranscribeJob();
+        mProcessor->getTextTranscriptionManager()->launchTranscribeJob();
 
     } else {
         jassertfalse;
