@@ -1,4 +1,12 @@
 #pragma once
+#include <string>
+
+struct TimedWord {
+    std::string text;
+    double startTime;  // seconds
+    double endTime;    // seconds
+    float confidence;  // 0.0 to 1.0
+};
 
 namespace WhisperConstants {
     // Audio parameters

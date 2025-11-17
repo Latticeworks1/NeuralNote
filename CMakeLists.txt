@@ -28,6 +28,12 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 add_subdirectory(ThirdParty/JUCE)
 add_subdirectory(ThirdParty/RTNeural)
 
+# Build whisper.cpp as subdirectory
+set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+add_subdirectory(ThirdParty/whisper.cpp)
+
 set(BaseTargetName NeuralNote)
 
 # Set COPY_PLUGIN_AFTER_BUILD to TRUE on Mac and to FALSE on Windows due to permission issues
@@ -109,6 +115,7 @@ target_link_libraries(BasicPitchCNN PUBLIC RTNeural bin_data)
 
 target_include_directories(${BaseTargetName} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ONNXRuntime/${ONNXRUNTIME_DIRNAME}/include)
 target_include_directories(${BaseTargetName} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ThirdParty/minimp3)
+target_include_directories(${BaseTargetName} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ThirdParty/whisper.cpp/include)
 
 target_compile_definitions(${BaseTargetName}
         PUBLIC
@@ -147,6 +154,7 @@ target_link_libraries(${BaseTargetName}
         juce::juce_dsp
         BasicPitchCNN
         onnxruntime
+        whisper
         bin_data
         PUBLIC
         juce_recommended_config_flags)

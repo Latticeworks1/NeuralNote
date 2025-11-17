@@ -10,16 +10,6 @@
 #include "WhisperConstants.h"
 
 /**
- * Struct to hold word-level transcription with timestamps
- */
-struct TimedWord {
-    std::string text;
-    double startTime;  // seconds
-    double endTime;    // seconds
-    float confidence;  // 0.0 to 1.0
-};
-
-/**
  * Class to run Whisper ONNX models for speech-to-text transcription
  * Uses two-stage architecture: Encoder + Decoder
  */

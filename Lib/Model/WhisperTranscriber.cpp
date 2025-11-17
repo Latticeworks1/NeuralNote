@@ -17,39 +17,53 @@ void WhisperTranscriber::selectBackend(Backend preferredBackend)
 {
     mErrorMessage.clear();
 
+    // Handle explicit backend requests
+    if (preferredBackend == Backend::Native) {
+        mActiveBackend = Backend::Native;
+        return;
+    }
     if (preferredBackend == Backend::HTTPService) {
         mActiveBackend = Backend::HTTPService;
         return;
     }
-
     if (preferredBackend == Backend::ONNX) {
         mActiveBackend = Backend::ONNX;
         return;
     }
 
-    // Auto mode: Try HTTP service first, fallback to ONNX
+    // Auto mode: Try Native → HTTP → ONNX
+    if (mWhisperNative.isInitialized()) {
+        mActiveBackend = Backend::Native;
+        DBG("WhisperTranscriber: Using Native (whisper.cpp) backend");
+        return;
+    }
+
     mHTTPClient = std::make_unique<WhisperHTTPClient>();
     if (mHTTPClient->isServiceAvailable()) {
         mActiveBackend = Backend::HTTPService;
         DBG("WhisperTranscriber: Using HTTP service backend");
-    } else {
-        if (mWhisperONNX.isInitialized()) {
-            mActiveBackend = Backend::ONNX;
-            DBG("WhisperTranscriber: Using ONNX Runtime backend");
-        } else {
-            // Neither backend available
-            mActiveBackend = Backend::ONNX;  // Set to ONNX but will fail isInitialized() check
-            mErrorMessage = "No Whisper backend available. HTTP service: " +
-                           mHTTPClient->getLastError().toStdString() +
-                           ", ONNX: " + mWhisperONNX.getErrorMessage();
-            DBG("WhisperTranscriber: " + juce::String(mErrorMessage));
-        }
+        return;
     }
+
+    if (mWhisperONNX.isInitialized()) {
+        mActiveBackend = Backend::ONNX;
+        DBG("WhisperTranscriber: Using ONNX Runtime backend");
+        return;
+    }
+
+    // No backend available
+    mActiveBackend = Backend::Native;  // Set to Native but will fail isInitialized() check
+    mErrorMessage = "No Whisper backend available. Native: " + mWhisperNative.getErrorMessage() +
+                   ", HTTP: " + mHTTPClient->getLastError().toStdString() +
+                   ", ONNX: " + mWhisperONNX.getErrorMessage();
+    DBG("WhisperTranscriber: " + juce::String(mErrorMessage));
 }
 
 bool WhisperTranscriber::isInitialized() const
 {
     switch (mActiveBackend) {
+        case Backend::Native:
+            return mWhisperNative.isInitialized();
         case Backend::HTTPService:
             return mHTTPClient != nullptr && mHTTPClient->isServiceAvailable();
         case Backend::ONNX:
@@ -67,9 +81,10 @@ const std::string& WhisperTranscriber::getErrorMessage() const
     }
 
     switch (mActiveBackend) {
+        case Backend::Native:
+            return mWhisperNative.getErrorMessage();
         case Backend::HTTPService:
             if (mHTTPClient) {
-                // Convert juce::String to std::string
                 static std::string httpError;
                 httpError = mHTTPClient->getLastError().toStdString();
                 return httpError;
@@ -99,6 +114,26 @@ std::vector<TimedWord> WhisperTranscriber::transcribeToText(float* inAudio, int 
 
     // Route to appropriate backend
     switch (mActiveBackend) {
+        case Backend::Native:
+            if (!mWhisperNative.isInitialized()) {
+                mErrorMessage = "Native backend not initialized";
+                return mTimedWords;
+            }
+
+            {
+                std::string languageCode = "auto";
+                if (mLanguage != WhisperConstants::Language::Auto) {
+                    languageCode = WhisperConstants::languageToString(mLanguage);
+                }
+
+                bool success = mWhisperNative.transcribe(inAudio, inNumSamples, languageCode, mTimedWords);
+                if (!success) {
+                    mErrorMessage = mWhisperNative.getErrorMessage();
+                }
+                return mTimedWords;
+            }
+            break;
+
         case Backend::HTTPService:
             if (mHTTPClient != nullptr) {
                 juce::String languageCode;

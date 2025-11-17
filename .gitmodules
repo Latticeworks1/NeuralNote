@@ -4,3 +4,6 @@
 [submodule "RTNeural"]
 	path = ThirdParty/RTNeural
 	url = https://github.com/jatinchowdhury18/RTNeural.git
+[submodule "ThirdParty/whisper.cpp"]
+	path = ThirdParty/whisper.cpp
+	url = https://github.com/ggerganov/whisper.cpp.git

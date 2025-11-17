@@ -13,12 +13,17 @@ void TextRegion::resized()
 
 void TextRegion::paint(Graphics& g)
 {
+    // Debug: Always show we're painting
+    DBG("TextRegion::paint - words count: " + juce::String(mTimedWords.size()) + ", bounds: " + getLocalBounds().toString());
+
     if (mTimedWords.empty()) {
-        g.setColour(BLACK.withAlpha(0.2f));
+        // Semi-transparent background
+        g.setColour(BLACK.withAlpha(0.3f));
         g.fillRect(getLocalBounds());
 
-        g.setColour(WHITE_TRANSPARENT);
-        g.setFont(Font(FontOptions()).withPointHeight(14.0f));
+        // Bright text for visibility
+        g.setColour(Colours::yellow);
+        g.setFont(Font(FontOptions(Font::bold)).withPointHeight(16.0f));
         g.drawText("Text transcription will appear here",
                    getLocalBounds(),
                    Justification::centred);

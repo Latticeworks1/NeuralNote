@@ -1,5 +1,6 @@
 #pragma once
 
+#include "WhisperNative.h"
 #include "WhisperONNX.h"
 #include "WhisperHTTPClient.h"
 #include "WhisperConstants.h"
@@ -19,9 +20,10 @@ class WhisperTranscriber
 {
 public:
     enum class Backend {
+        Native,        // Use whisper.cpp (native C++, recommended)
         ONNX,          // Use local ONNX Runtime models
         HTTPService,   // Use remote HTTP service (Hugging Face Transformers)
-        Auto           // Auto-select: HTTP if available, fallback to ONNX
+        Auto           // Auto-select: Native → HTTP → ONNX
     };
 
     WhisperTranscriber(Backend backend = Backend::Auto,
@@ -89,6 +91,7 @@ private:
     Backend mRequestedBackend;
     Backend mActiveBackend;
 
+    WhisperNative mWhisperNative;
     WhisperONNX mWhisperONNX;
     std::unique_ptr<WhisperHTTPClient> mHTTPClient;
 
